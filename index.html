@@ -26,6 +26,7 @@
   <div id="controls">
     <button id="loadBtn">Bild laden</button>
     <button id="saveBtn" disabled>Speichern</button>
+    <button id="copyBtn" disabled>Ausschnitt kopieren</button>
     <label>Rotation: <input type="range" id="rotateRange" min="-45" max="45" value="0"></label>
   </div>
   <input type="file" id="fileInput" accept="image/*" />
@@ -37,6 +38,7 @@
     const fileInput = document.getElementById('fileInput');
     const loadBtn = document.getElementById('loadBtn');
     const saveBtn = document.getElementById('saveBtn');
+    const copyBtn = document.getElementById('copyBtn');
     const rotateRange = document.getElementById('rotateRange');
     const placeholder = document.getElementById('placeholder');
     let img = new Image(), scale = 1, minScale = 1, offsetX = 0, offsetY = 0, rotation = 0;
@@ -65,7 +67,9 @@
         scale = minScale;
         offsetX = (canvas.width - img.width*scale)/2;
         offsetY = (canvas.height - img.height*scale)/2;
-        draw(); saveBtn.disabled = false;
+        draw();
+        saveBtn.disabled = false;
+        copyBtn.disabled = false;
         placeholder.style.display = 'none';
       };
       img.src = src;
@@ -165,6 +169,30 @@
         link.download=filename+'_zuschnitt.jpg';
         link.href=URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href);
       },'image/jpeg');
+    });
+
+    function copyCrop(){
+      if(!img.src) return;
+      const out=document.createElement('canvas'); out.width=canvas.width; out.height=canvas.height;
+      const octx=out.getContext('2d');
+      octx.translate(offsetX + img.width*scale/2, offsetY + img.height*scale/2);
+      octx.rotate(rotation);
+      octx.drawImage(img, -img.width*scale/2, -img.height*scale/2, img.width*scale, img.height*scale);
+      out.toBlob(async blob=>{
+        try{
+          await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+        }catch(err){
+          console.error('Clipboard copy failed', err);
+        }
+      },'image/png');
+    }
+
+    copyBtn.addEventListener('click', copyCrop);
+    document.addEventListener('keydown', e=>{
+      if(e.ctrlKey && e.key.toLowerCase()==='c'){
+        e.preventDefault();
+        copyCrop();
+      }
     });
 
     container.focus();
