@@ -158,12 +158,20 @@
       draw();
     });
 
-    saveBtn.addEventListener('click', ()=>{
-      const out=document.createElement('canvas'); out.width=canvas.width; out.height=canvas.height;
+    function createOutputCanvas(){
+      const exportScale = 1/scale;
+      const out=document.createElement('canvas');
+      out.width=Math.round(canvas.width*exportScale);
+      out.height=Math.round(canvas.height*exportScale);
       const octx=out.getContext('2d');
-      octx.translate(offsetX + img.width*scale/2, offsetY + img.height*scale/2);
+      octx.translate(offsetX*exportScale + img.width/2, offsetY*exportScale + img.height/2);
       octx.rotate(rotation);
-      octx.drawImage(img, -img.width*scale/2, -img.height*scale/2, img.width*scale, img.height*scale);
+      octx.drawImage(img, -img.width/2, -img.height/2);
+      return out;
+    }
+
+    saveBtn.addEventListener('click', ()=>{
+      const out=createOutputCanvas();
       out.toBlob(blob=>{
         const link=document.createElement('a');
         link.download=filename+'_zuschnitt.jpg';
@@ -173,11 +181,7 @@
 
     function copyCrop(){
       if(!img.src) return;
-      const out=document.createElement('canvas'); out.width=canvas.width; out.height=canvas.height;
-      const octx=out.getContext('2d');
-      octx.translate(offsetX + img.width*scale/2, offsetY + img.height*scale/2);
-      octx.rotate(rotation);
-      octx.drawImage(img, -img.width*scale/2, -img.height*scale/2, img.width*scale, img.height*scale);
+      const out=createOutputCanvas();
       out.toBlob(async blob=>{
         try{
           await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
