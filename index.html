@@ -170,7 +170,7 @@
     });
     window.addEventListener('mouseup', () => { isDragging=false; container.classList.remove('dragging'); });
 
-    container.addEventListener('wheel', e => {
+    const handleWheel = e => {
       if(!img.src) return; e.preventDefault();
       const sensitivity = e.ctrlKey ? 0.0003 : 0.001;
       const oldScale=scale, delta=-e.deltaY*sensitivity;
@@ -182,7 +182,9 @@
       offsetX=Math.min(0,Math.max(offsetX,canvas.width-img.width*scale));
       offsetY=Math.min(0,Math.max(offsetY,canvas.height-img.height*scale));
       draw();
-    });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
 
     function createOutputCanvas(){
       const exportScale = 1/scale;
