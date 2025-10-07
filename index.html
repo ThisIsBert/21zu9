@@ -206,11 +206,21 @@
         clearPreview();
         return;
       }
-      const out=createOutputCanvas();
-      const targetWidth=Math.min(out.width, out.height*16/9);
-      const startX=(out.width-targetWidth)/2;
+
+      const previewAspect = 16/9;
+      let srcWidth = canvas.height * previewAspect;
+      let srcHeight = canvas.height;
+
+      if(srcWidth > canvas.width) {
+        srcWidth = canvas.width;
+        srcHeight = srcWidth / previewAspect;
+      }
+
+      const srcX = (canvas.width - srcWidth) / 2;
+      const srcY = (canvas.height - srcHeight) / 2;
+
       previewCtx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
-      previewCtx.drawImage(out,startX,0,targetWidth,out.height,0,0,previewCanvas.width,previewCanvas.height);
+      previewCtx.drawImage(canvas, srcX, srcY, srcWidth, srcHeight, 0, 0, previewCanvas.width, previewCanvas.height);
       previewCanvas.style.opacity = 1;
     }
 
