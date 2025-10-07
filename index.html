@@ -6,28 +6,49 @@
   <title>21:9 Bildzuschnitt</title>
   <style>
 
-    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: auto; background: #f0f0f0; font-family: sans-serif; }
+    body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: auto; background: #f0f0f0; font-family: sans-serif; padding: 2rem; box-sizing: border-box; }
+    #mainWrapper { display: flex; gap: 2rem; align-items: flex-start; }
+    #workspace { display: flex; flex-direction: column; align-items: center; }
     #container { position: relative; width: 1000px; height: 428px; background: #ddd; overflow: hidden; border-radius: 8px; border: 1px solid #888; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: grab; }
 
     #container.dragging { cursor: grabbing; }
     canvas { display: block; user-select: none; pointer-events: none; }
     #placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.2rem; pointer-events: none; text-align: center; }
-    #controls { margin-top: 1rem; display: flex; gap: 1rem; }
+    #controls { margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
     button { padding: 0.5rem 1rem; border: none; border-radius: 4px; background: #007acc; color: white; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
     button:hover { background: #005fa3; }
     #fileInput { display: none; }
+    #previewSection { margin-top: 1.5rem; width: 640px; max-width: 100%; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+    #previewSection h2 { margin: 0; font-size: 1.1rem; color: #333; }
+    #previewCanvas { width: 100%; height: auto; border: 1px solid #888; border-radius: 6px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #instructions { max-width: 260px; background: rgba(255,255,255,0.9); border: 1px solid #bbb; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 0.95rem; line-height: 1.4; }
+    #instructions h3 { margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem; color: #222; }
   </style>
 </head>
 <body>
-  <div id="container" tabindex="0">
-    <canvas id="canvas"></canvas>
-    <div id="placeholder">Bild hier einfügen, ablegen oder laden</div>
-  </div>
-  <div id="controls">
-    <button id="loadBtn">Bild laden</button>
-    <button id="saveBtn" disabled>Speichern</button>
-    <button id="copyBtn" disabled>Ausschnitt kopieren</button>
-    <label>Rotation: <input type="range" id="rotateRange" min="-45" max="45" value="0"></label>
+  <div id="mainWrapper">
+    <div id="workspace">
+      <div id="container" tabindex="0">
+        <canvas id="canvas"></canvas>
+        <div id="placeholder">Bild hier einfügen, ablegen oder laden</div>
+      </div>
+      <div id="controls">
+        <button id="loadBtn">Bild laden</button>
+        <button id="saveBtn" disabled>Speichern</button>
+        <button id="copyBtn" disabled>Ausschnitt kopieren</button>
+        <label>Rotation: <input type="range" id="rotateRange" min="-45" max="45" value="0"></label>
+      </div>
+      <div id="previewSection">
+        <h2>Vorschau 16:9</h2>
+        <canvas id="previewCanvas" width="640" height="360"></canvas>
+      </div>
+    </div>
+    <aside id="instructions">
+      <h3>Anleitung</h3>
+      <p>Links klicken und ziehen, um Bildausschnitt zu verschieben</p>
+      <p>Mausrad / Scrollen : Zoom</p>
+      <p>Strg + Mausrad /Scrollen: Feinzoom</p>
+    </aside>
   </div>
   <input type="file" id="fileInput" accept="image/*" />
 
@@ -35,6 +56,8 @@
     const container = document.getElementById('container');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
     const fileInput = document.getElementById('fileInput');
     const loadBtn = document.getElementById('loadBtn');
     const saveBtn = document.getElementById('saveBtn');
@@ -84,8 +107,10 @@
         ctx.drawImage(img, -img.width*scale/2, -img.height*scale/2, img.width*scale, img.height*scale);
         ctx.restore();
         placeholder.style.display = 'none';
+        updatePreview();
       } else {
         placeholder.style.display = 'flex';
+        clearPreview();
       }
     }
 
@@ -147,7 +172,8 @@
 
     container.addEventListener('wheel', e => {
       if(!img.src) return; e.preventDefault();
-      const oldScale=scale, delta=-e.deltaY*0.001;
+      const sensitivity = e.ctrlKey ? 0.0003 : 0.001;
+      const oldScale=scale, delta=-e.deltaY*sensitivity;
       scale=Math.max(minScale, scale*(1+delta));
       const rect=container.getBoundingClientRect();
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
@@ -168,6 +194,34 @@
       octx.rotate(rotation);
       octx.drawImage(img, -img.width/2, -img.height/2);
       return out;
+    }
+
+    function clearPreview(){
+      previewCtx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
+      previewCanvas.style.opacity = 0.4;
+    }
+
+    function updatePreview(){
+      if(!img.src) {
+        clearPreview();
+        return;
+      }
+
+      const previewAspect = 16/9;
+      let srcWidth = canvas.height * previewAspect;
+      let srcHeight = canvas.height;
+
+      if(srcWidth > canvas.width) {
+        srcWidth = canvas.width;
+        srcHeight = srcWidth / previewAspect;
+      }
+
+      const srcX = (canvas.width - srcWidth) / 2;
+      const srcY = (canvas.height - srcHeight) / 2;
+
+      previewCtx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
+      previewCtx.drawImage(canvas, srcX, srcY, srcWidth, srcHeight, 0, 0, previewCanvas.width, previewCanvas.height);
+      previewCanvas.style.opacity = 1;
     }
 
     saveBtn.addEventListener('click', ()=>{
@@ -199,6 +253,7 @@
       }
     });
 
+    clearPreview();
     container.focus();
   </script>
 </body>
