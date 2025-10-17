@@ -52,7 +52,7 @@
       </div>
       <div id="previewSection">
         <h2>Vorschau 16:9</h2>
-        <canvas id="previewCanvas" width="640" height="360"></canvas>
+        <canvas id="previewCanvas" width="303" height="170"></canvas>
       </div>
     </div>
   </div>
@@ -182,6 +182,7 @@
       }
     });
     window.addEventListener('mouseup', () => { isDragging=false; container.classList.remove('dragging'); });
+
 
     const handleWheel = e => {
       if(!img.src) return; e.preventDefault();
