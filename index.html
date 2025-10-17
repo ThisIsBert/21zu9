@@ -20,9 +20,15 @@
     #fileInput { display: none; }
     #previewSection { margin-top: 1.5rem; width: 640px; max-width: 100%; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
     #previewSection h2 { margin: 0; font-size: 1.1rem; color: #333; }
-    #previewCanvas { width: 100%; height: auto; border: 1px solid #888; border-radius: 6px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    #instructions { max-width: 260px; background: rgba(255,255,255,0.9); border: 1px solid #bbb; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 0.95rem; line-height: 1.4; }
-    #instructions h3 { margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem; color: #222; }
+    #previewCanvas { width: 640px; height: 360px; border: 1px solid #888; border-radius: 6px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #placeholder { flex-direction: column; gap: 0.75rem; }
+    #placeholderMain { font-size: 1.2rem; }
+    #placeholderHint { font-size: 0.95rem; line-height: 1.4; color: #444; max-width: 80%; }
+    .rangeLabel { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; color: #333; }
+    .rangeLabel input[type="range"] { width: 220px; }
+    .miniBtn { padding: 0.35rem 0.6rem; font-size: 0.85rem; background: #e0e0e0; color: #333; border-radius: 4px; border: 1px solid #c0c0c0; cursor: pointer; transition: background 0.2s, color 0.2s; }
+    .miniBtn:hover { background: #d0d0d0; }
+    .miniBtn:active { background: #c0c0c0; }
   </style>
 </head>
 <body>
@@ -30,25 +36,25 @@
     <div id="workspace">
       <div id="container" tabindex="0">
         <canvas id="canvas"></canvas>
-        <div id="placeholder">Bild hier einfügen, ablegen oder laden</div>
+        <div id="placeholder">
+          <div id="placeholderMain">Bild hier einfügen, ablegen oder laden</div>
+          <div id="placeholderHint">Bild mit der Maus verschieben. Scrollen für Zoom (für Feinzoom [Strg] gedrückt halten)</div>
+        </div>
       </div>
       <div id="controls">
         <button id="loadBtn">Bild laden</button>
         <button id="saveBtn" disabled>Speichern</button>
         <button id="copyBtn" disabled>Ausschnitt kopieren</button>
-        <label>Rotation: <input type="range" id="rotateRange" min="-45" max="45" value="0"></label>
+        <label class="rangeLabel">Drehen:
+          <input type="range" id="rotateRange" min="-45" max="45" value="0">
+          <button id="resetRotation" type="button" class="miniBtn" aria-label="Rotation auf 0 Grad zurücksetzen">↺</button>
+        </label>
       </div>
       <div id="previewSection">
         <h2>Vorschau 16:9</h2>
         <canvas id="previewCanvas" width="640" height="360"></canvas>
       </div>
     </div>
-    <aside id="instructions">
-      <h3>Anleitung</h3>
-      <p>Links klicken und ziehen, um Bildausschnitt zu verschieben</p>
-      <p>Mausrad / Scrollen : Zoom</p>
-      <p>Strg + Mausrad /Scrollen: Feinzoom</p>
-    </aside>
   </div>
   <input type="file" id="fileInput" accept="image/*" />
 
@@ -63,6 +69,7 @@
     const saveBtn = document.getElementById('saveBtn');
     const copyBtn = document.getElementById('copyBtn');
     const rotateRange = document.getElementById('rotateRange');
+    const resetRotationBtn = document.getElementById('resetRotation');
     const placeholder = document.getElementById('placeholder');
     let img = new Image(), scale = 1, minScale = 1, offsetX = 0, offsetY = 0, rotation = 0;
     let isDragging = false, startX = 0, startY = 0, filename = '';
@@ -118,6 +125,12 @@
     fileInput.addEventListener('change', () => loadImageFile(fileInput.files[0]));
     rotateRange.addEventListener('input', () => {
       rotation = parseFloat(rotateRange.value) * Math.PI / 180;
+      draw();
+    });
+
+    resetRotationBtn.addEventListener('click', () => {
+      rotateRange.value = 0;
+      rotation = 0;
       draw();
     });
 
