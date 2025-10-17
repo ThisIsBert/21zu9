@@ -134,6 +134,12 @@
       draw();
     });
 
+    resetRotationBtn.addEventListener('click', () => {
+      rotateRange.value = 0;
+      rotation = 0;
+      draw();
+    });
+
     container.addEventListener('dragover', e => { e.preventDefault(); container.classList.add('dragging'); });
     container.addEventListener('dragleave', () => container.classList.remove('dragging'));
     container.addEventListener('drop', e => {
