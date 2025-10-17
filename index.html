@@ -18,9 +18,9 @@
     button { padding: 0.5rem 1rem; border: none; border-radius: 4px; background: #007acc; color: white; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
     button:hover { background: #005fa3; }
     #fileInput { display: none; }
-    #previewSection { margin-top: 1.5rem; width: 303px; max-width: 100%; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+    #previewSection { margin-top: 1.5rem; width: 640px; max-width: 100%; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
     #previewSection h2 { margin: 0; font-size: 1.1rem; color: #333; }
-    #previewCanvas { width: 303px; height: 170px; border: 1px solid #888; border-radius: 6px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #previewCanvas { width: 640px; height: 360px; border: 1px solid #888; border-radius: 6px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     #placeholder { flex-direction: column; gap: 0.75rem; }
     #placeholderMain { font-size: 1.2rem; }
     #placeholderHint { font-size: 0.95rem; line-height: 1.4; color: #444; max-width: 80%; }
@@ -52,7 +52,7 @@
       </div>
       <div id="previewSection">
         <h2>Vorschau 16:9</h2>
-        <canvas id="previewCanvas" width="303" height="170"></canvas>
+        <canvas id="previewCanvas" width="640" height="360"></canvas>
       </div>
     </div>
   </div>
@@ -134,6 +134,12 @@
       draw();
     });
 
+    resetRotationBtn.addEventListener('click', () => {
+      rotateRange.value = 0;
+      rotation = 0;
+      draw();
+    });
+
     container.addEventListener('dragover', e => { e.preventDefault(); container.classList.add('dragging'); });
     container.addEventListener('dragleave', () => container.classList.remove('dragging'));
     container.addEventListener('drop', e => {
@@ -182,6 +188,7 @@
       }
     });
     window.addEventListener('mouseup', () => { isDragging=false; container.classList.remove('dragging'); });
+
 
     const handleWheel = e => {
       if(!img.src) return; e.preventDefault();
@@ -273,3 +280,4 @@
   </script>
 </body>
 </html>
+
