@@ -17,6 +17,7 @@
     #controls { margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
     button { padding: 0.5rem 1rem; border: none; border-radius: 4px; background: #007acc; color: white; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
     button:hover { background: #005fa3; }
+    button:disabled { background: #b0b0b0; cursor: not-allowed; }
     #fileInput { display: none; }
     #previewSection { margin-top: 1.5rem; width: 303px; max-width: 100%; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
     #previewSection h2 { margin: 0; font-size: 1.1rem; color: #333; }
@@ -29,6 +30,9 @@
     .miniBtn { padding: 0.35rem 0.6rem; font-size: 0.85rem; background: #e0e0e0; color: #333; border-radius: 4px; border: 1px solid #c0c0c0; cursor: pointer; transition: background 0.2s, color 0.2s; }
     .miniBtn:hover { background: #d0d0d0; }
     .miniBtn:active { background: #c0c0c0; }
+    .miniBtn:disabled { background: #efefef; color: #9c9c9c; cursor: default; }
+    #historyControls { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem; border: 1px solid #cfcfcf; border-radius: 4px; background: #fafafa; }
+    #historyStatus { min-width: 4rem; text-align: center; font-size: 0.9rem; color: #333; }
   </style>
 </head>
 <body>
@@ -49,6 +53,11 @@
           <input type="range" id="rotateRange" min="-45" max="45" value="0">
           <button id="resetRotation" type="button" class="miniBtn" aria-label="Rotation auf 0 Grad zurücksetzen">↺</button>
         </label>
+        <div id="historyControls" aria-live="polite">
+          <button id="historyPrev" type="button" class="miniBtn" aria-label="Voriges Bild anzeigen" disabled>←</button>
+          <span id="historyStatus">– / –</span>
+          <button id="historyNext" type="button" class="miniBtn" aria-label="Nächstes Bild anzeigen" disabled>→</button>
+        </div>
       </div>
       <div id="previewSection">
         <h2>Vorschau 16:9</h2>
@@ -71,39 +80,115 @@
     const rotateRange = document.getElementById('rotateRange');
     const resetRotationBtn = document.getElementById('resetRotation');
     const placeholder = document.getElementById('placeholder');
+    const historyPrevBtn = document.getElementById('historyPrev');
+    const historyNextBtn = document.getElementById('historyNext');
+    const historyStatus = document.getElementById('historyStatus');
     let img = new Image(), scale = 1, minScale = 1, offsetX = 0, offsetY = 0, rotation = 0;
     let isDragging = false, startX = 0, startY = 0, filename = '';
+    let imageHistory = [];
+    let historyIndex = -1;
+    let activeLoadToken = 0;
 
     function resizeCanvas() {
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
+      clampOffsets();
       draw();
+      if(img.naturalWidth) updateHistoryState();
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
     function loadImageFile(file) {
+      if(!file) return;
       const reader = new FileReader();
-      reader.onload = e => initImage(e.target.result, file.name);
+      reader.onload = e => addImageToHistory(e.target.result, file.name || 'Bild');
       reader.readAsDataURL(file);
+      fileInput.value = '';
     }
     function loadImageURL(url) {
-      initImage(url, url.split('/').pop());
+      if(!url) return;
+      const nameFromUrl = url.startsWith('data:') ? 'Bild' : (url.split('/').pop() || 'Bild');
+      addImageToHistory(url, nameFromUrl);
     }
-    function initImage(src, name) {
-      img = new Image(); img.crossOrigin = 'anonymous';
-      img.onload = () => {
+    function initImage(src, name, storedState) {
+      const loadToken = ++activeLoadToken;
+      const targetIndex = historyIndex;
+      const nextImage = new Image();
+      nextImage.crossOrigin = 'anonymous';
+      nextImage.onload = () => {
+        if(loadToken !== activeLoadToken || targetIndex !== historyIndex) return;
+        img = nextImage;
         minScale = Math.max(canvas.width/img.width, canvas.height/img.height);
-        scale = minScale;
-        offsetX = (canvas.width - img.width*scale)/2;
-        offsetY = (canvas.height - img.height*scale)/2;
+        const defaultOffsetX = (canvas.width - img.width*minScale)/2;
+        const defaultOffsetY = (canvas.height - img.height*minScale)/2;
+
+        if(storedState) {
+          scale = Math.max(minScale, storedState.scale || minScale);
+          rotation = typeof storedState.rotation === 'number' ? storedState.rotation : 0;
+          offsetX = typeof storedState.offsetX === 'number' ? storedState.offsetX : defaultOffsetX;
+          offsetY = typeof storedState.offsetY === 'number' ? storedState.offsetY : defaultOffsetY;
+        } else {
+          scale = minScale;
+          rotation = 0;
+          offsetX = defaultOffsetX;
+          offsetY = defaultOffsetY;
+        }
+
+        clampOffsets();
+        rotateRange.value = Math.round(rotation * 180 / Math.PI);
         draw();
         saveBtn.disabled = false;
         copyBtn.disabled = false;
         placeholder.style.display = 'none';
+        updateHistoryState();
+        filename = (name || 'export').replace(/\.[^/.]+$/, '');
       };
-      img.src = src;
-      filename = name.replace(/\.[^/.]+$/, '');
+      nextImage.src = src;
+    }
+    function clampOffsets() {
+      if(!img || !img.width) return;
+      const minOffsetX = canvas.width - img.width * scale;
+      const minOffsetY = canvas.height - img.height * scale;
+      const maxOffsetX = 0;
+      const maxOffsetY = 0;
+      offsetX = Math.min(maxOffsetX, Math.max(minOffsetX, offsetX));
+      offsetY = Math.min(maxOffsetY, Math.max(minOffsetY, offsetY));
+    }
+    function captureState() {
+      return { scale, offsetX, offsetY, rotation };
+    }
+    function updateHistoryState() {
+      if(historyIndex >= 0 && imageHistory[historyIndex]) {
+        imageHistory[historyIndex].state = captureState();
+      }
+    }
+    function updateHistoryControls() {
+      const hasEntries = imageHistory.length > 0;
+      historyPrevBtn.disabled = !hasEntries || historyIndex <= 0;
+      historyNextBtn.disabled = !hasEntries || historyIndex >= imageHistory.length - 1;
+      historyStatus.textContent = hasEntries ? `${historyIndex + 1} / ${imageHistory.length}` : '– / –';
+    }
+    function addImageToHistory(src, name) {
+      if(!src) return;
+      updateHistoryState();
+      if(historyIndex < imageHistory.length - 1) {
+        imageHistory = imageHistory.slice(0, historyIndex + 1);
+      }
+      imageHistory.push({ src, name, state: null });
+      historyIndex = imageHistory.length - 1;
+      initImage(src, name);
+      updateHistoryControls();
+    }
+    function navigateHistory(step) {
+      if(!imageHistory.length) return;
+      const newIndex = historyIndex + step;
+      if(newIndex < 0 || newIndex >= imageHistory.length) return;
+      updateHistoryState();
+      historyIndex = newIndex;
+      const entry = imageHistory[historyIndex];
+      initImage(entry.src, entry.name, entry.state);
+      updateHistoryControls();
     }
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -126,18 +211,14 @@
     rotateRange.addEventListener('input', () => {
       rotation = parseFloat(rotateRange.value) * Math.PI / 180;
       draw();
+      updateHistoryState();
     });
 
     resetRotationBtn.addEventListener('click', () => {
       rotateRange.value = 0;
       rotation = 0;
       draw();
-    });
-
-    resetRotationBtn.addEventListener('click', () => {
-      rotateRange.value = 0;
-      rotation = 0;
-      draw();
+      updateHistoryState();
     });
 
     container.addEventListener('dragover', e => { e.preventDefault(); container.classList.add('dragging'); });
@@ -182,12 +263,12 @@
     window.addEventListener('mousemove', e => {
       if(isDragging) {
         offsetX = e.clientX - startX; offsetY = e.clientY - startY;
-        offsetX = Math.min(0, Math.max(offsetX, canvas.width-img.width*scale));
-        offsetY = Math.min(0, Math.max(offsetY, canvas.height-img.height*scale));
+        clampOffsets();
         draw();
+        updateHistoryState();
       }
     });
-    window.addEventListener('mouseup', () => { isDragging=false; container.classList.remove('dragging'); });
+    window.addEventListener('mouseup', () => { isDragging=false; container.classList.remove('dragging'); updateHistoryState(); });
 
 
     const handleWheel = e => {
@@ -199,9 +280,9 @@
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
       offsetX=mx-(mx-offsetX)*(scale/oldScale);
       offsetY=my-(my-offsetY)*(scale/oldScale);
-      offsetX=Math.min(0,Math.max(offsetX,canvas.width-img.width*scale));
-      offsetY=Math.min(0,Math.max(offsetY,canvas.height-img.height*scale));
+      clampOffsets();
       draw();
+      updateHistoryState();
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
@@ -274,6 +355,11 @@
         copyCrop();
       }
     });
+
+    historyPrevBtn.addEventListener('click', () => navigateHistory(-1));
+    historyNextBtn.addEventListener('click', () => navigateHistory(1));
+
+    updateHistoryControls();
 
     clearPreview();
     container.focus();
