@@ -87,6 +87,7 @@
     let isDragging = false, startX = 0, startY = 0, filename = '';
     let imageHistory = [];
     let historyIndex = -1;
+    let activeLoadToken = 0;
 
     function resizeCanvas() {
       canvas.width = container.clientWidth;
@@ -111,8 +112,13 @@
       addImageToHistory(url, nameFromUrl);
     }
     function initImage(src, name, storedState) {
-      img = new Image(); img.crossOrigin = 'anonymous';
-      img.onload = () => {
+      const loadToken = ++activeLoadToken;
+      const targetIndex = historyIndex;
+      const nextImage = new Image();
+      nextImage.crossOrigin = 'anonymous';
+      nextImage.onload = () => {
+        if(loadToken !== activeLoadToken || targetIndex !== historyIndex) return;
+        img = nextImage;
         minScale = Math.max(canvas.width/img.width, canvas.height/img.height);
         const defaultOffsetX = (canvas.width - img.width*minScale)/2;
         const defaultOffsetY = (canvas.height - img.height*minScale)/2;
@@ -136,9 +142,9 @@
         copyBtn.disabled = false;
         placeholder.style.display = 'none';
         updateHistoryState();
+        filename = (name || 'export').replace(/\.[^/.]+$/, '');
       };
-      img.src = src;
-      filename = (name || 'export').replace(/\.[^/.]+$/, '');
+      nextImage.src = src;
     }
     function clampOffsets() {
       if(!img || !img.width) return;
