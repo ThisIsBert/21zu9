@@ -273,7 +273,7 @@
 
     const handleWheel = e => {
       if(!img.src) return; e.preventDefault();
-      const sensitivity = e.ctrlKey ? 0.0003 : 0.001;
+      const sensitivity = e.ctrlKey ? 0.00015 : 0.001;
       const oldScale=scale, delta=-e.deltaY*sensitivity;
       scale=Math.max(minScale, scale*(1+delta));
       const rect=container.getBoundingClientRect();
