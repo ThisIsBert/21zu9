@@ -172,9 +172,6 @@
     function addImageToHistory(src, name) {
       if(!src) return;
       updateHistoryState();
-      if(historyIndex < imageHistory.length - 1) {
-        imageHistory = imageHistory.slice(0, historyIndex + 1);
-      }
       imageHistory.push({ src, name, state: null });
       historyIndex = imageHistory.length - 1;
       initImage(src, name);
@@ -366,4 +363,3 @@
   </script>
 </body>
 </html>
-
