@@ -88,6 +88,10 @@
     let imageHistory = [];
     let historyIndex = -1;
     let activeLoadToken = 0;
+    const SAVE_MIME = 'image/jpeg';
+    const SAVE_EXTENSION = 'jpg';
+    const SAVE_QUALITY = 1.0;
+    const COPY_MIME = 'image/png';
 
     function resizeCanvas() {
       canvas.width = container.clientWidth;
@@ -328,9 +332,9 @@
       const out=createOutputCanvas();
       out.toBlob(blob=>{
         const link=document.createElement('a');
-        link.download=filename+'_zuschnitt.jpg';
+        link.download=`${filename}_zuschnitt.${SAVE_EXTENSION}`;
         link.href=URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href);
-      },'image/jpeg');
+      },SAVE_MIME, SAVE_QUALITY);
     });
 
     function copyCrop(){
@@ -342,7 +346,7 @@
         }catch(err){
           console.error('Clipboard copy failed', err);
         }
-      },'image/png');
+      },COPY_MIME);
     }
 
     copyBtn.addEventListener('click', copyCrop);
