@@ -95,7 +95,8 @@ resetRotationBtn.addEventListener('click',()=>{rotateRange.value=0;rotation=0;up
 container.addEventListener('click',()=>container.focus());
 container.addEventListener('dragover',e=>{e.preventDefault();container.classList.add('dragging')});container.addEventListener('dragleave',()=>container.classList.remove('dragging'));
 container.addEventListener('drop',e=>{e.preventDefault();container.classList.remove('dragging');const dt=e.dataTransfer;if(dt.files&&dt.files.length){loadImageFile(dt.files[0]);return}const url=dt.getData('text/uri-list')||dt.getData('text/plain');if(url&&url.match(/\.(jpe?g|png|gif|webp)(\?|$)/i)){loadImageURL(url);return}const html=dt.getData('text/html');if(html){const div=document.createElement('div');div.innerHTML=html;const imgEl=div.querySelector('img');if(imgEl&&imgEl.src)loadImageURL(imgEl.src)}});
-container.addEventListener('paste',e=>{for(const item of e.clipboardData.items){if(item.kind==='file'&&item.type.startsWith('image/')){loadImageFile(item.getAsFile());return}}});
+function handlePaste(e){const data=e.clipboardData;if(!data)return;for(const file of data.files){if(file.type.startsWith('image/')){e.preventDefault();loadImageFile(file);return}}for(const item of data.items){if(item.kind==='file'&&item.type.startsWith('image/')){e.preventDefault();loadImageFile(item.getAsFile());return}}}
+document.addEventListener('paste',handlePaste);
 container.addEventListener('mousedown',e=>{if(!img.src)return;isDragging=true;startX=e.clientX-offsetX;startY=e.clientY-offsetY;container.classList.add('dragging')});
 window.addEventListener('mousemove',e=>{if(!isDragging)return;offsetX=e.clientX-startX;offsetY=e.clientY-startY;clampOffsets();draw();updateHistoryState()});
 window.addEventListener('mouseup',()=>{isDragging=false;container.classList.remove('dragging');updateHistoryState()});
